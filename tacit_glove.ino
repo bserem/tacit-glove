@@ -185,6 +185,7 @@ int getDistance(int sensorNumber){
     Serial.println(out);
   }
   
+  //HC-SR04 Sensors return when they scan nothing. We fix this by code and return the longest possible distance
   if (duration != 10) {
     return out;
   } else {
