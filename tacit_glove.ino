@@ -9,7 +9,10 @@
 //--------------------------------
 
 #define _DEBUG_MODE 1
-#define _DEBUG_SENSOR 0 //either 0 or 1
+#define _DEBUG_SENSOR 1 //either 0 or 1
+
+#define LEFT_SERVO_PIN 4
+#define RIGHT_SERVO_PIN 7
 
 #include <NewPing.h>
 #include <Servo.h>
@@ -23,12 +26,12 @@ unsigned int cm[SENSOR_NUM];         // Where the ping distances are stored.
 byte currentSensor = 0;          // Keeps track of which sensor is active.
 
 NewPing sonar[SENSOR_NUM] = {     // Sensor object array.
-  NewPing(6, 7, MAX_DISTANCE), // Each sensor's trigger pin, echo pin, and max distance to ping.
-  NewPing(8, 9, MAX_DISTANCE)
+  NewPing(8, 9, MAX_DISTANCE), // Each sensor's trigger pin, echo pin, and max distance to ping.
+  NewPing(10, 11, MAX_DISTANCE)
 };
 
 Servo ServoList[SENSOR_NUM];
-const int ServoPins[SENSOR_NUM] = {3,7};       //Servo motor pins on Arduino
+const int ServoPins[SENSOR_NUM] = {LEFT_SERVO_PIN,RIGHT_SERVO_PIN};       //Servo motor pins on Arduino
 const int ServoMaxAngle[SENSOR_NUM] = {90,90}; //Where to turns the servos when something is close
 const int ServoMinAngle[SENSOR_NUM] = {0,180}; //Where to turns the servos when something is far
 const int SensorClose = 10;                    // Closest value we detect with the PING sensor. (Soundwave travel time in milliseconds.)
