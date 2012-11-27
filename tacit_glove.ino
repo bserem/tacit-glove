@@ -1,45 +1,50 @@
 //--------------------------------
 // @file
-// Tacit Glove
-// Tactile feedback for the blind.
-// Modified for HC-SR04 Ultrasonic Rangefinders
-// and adapted to work with the NewPing library which allows very fast scanning
+// Sonar Glove
+// Tactile feedback for the blind
+// for HC-SR04 Ultrasonic Rangefinders
+// adapted to work with the NewPing library which allows very fast scanning
+// by Bill Seremetis (bill@seremetis.net)
+// 2012 November
 //--------------------------------
+
+#define _DEBUG_MODE 1
+#define _DEBUG_SENSOR 0 //either 0 or 1
 
 #include <NewPing.h>
 #include <Servo.h>
 
 #define SENSOR_NUM     2 // Number or sensors.
-#define MAX_DISTANCE 350 // Maximum distance (in cm) to ping.
+#define MAX_DISTANCE 350 // Maximum distance (in cm) to ping. Our sensors go to 400cm.
 #define PING_INTERVAL 50 // Milliseconds between sensor pings (29ms is about the min to avoid cross-sensor echo).
 
 unsigned long pingTimer[SENSOR_NUM]; // Holds the times when the next ping should happen for each sensor.
 unsigned int cm[SENSOR_NUM];         // Where the ping distances are stored.
-uint8_t currentSensor = 0;          // Keeps track of which sensor is active.
+byte currentSensor = 0;          // Keeps track of which sensor is active.
 
 NewPing sonar[SENSOR_NUM] = {     // Sensor object array.
   NewPing(6, 7, MAX_DISTANCE), // Each sensor's trigger pin, echo pin, and max distance to ping.
   NewPing(8, 9, MAX_DISTANCE)
-  };
+};
 
-  Servo ServoList[SENSOR_NUM];
-const int ServoPins[SENSOR_NUM] = {2,3};       //Servo motor pins on Arduino
-const int ServoMaxAngle[SENSOR_NUM] = {90,90};  //Where to turns the servos when something is close
+Servo ServoList[SENSOR_NUM];
+const int ServoPins[SENSOR_NUM] = {3,7};       //Servo motor pins on Arduino
+const int ServoMaxAngle[SENSOR_NUM] = {90,90}; //Where to turns the servos when something is close
 const int ServoMinAngle[SENSOR_NUM] = {0,180}; //Where to turns the servos when something is far
 const int SensorClose = 10;                    // Closest value we detect with the PING sensor. (Soundwave travel time in milliseconds.)
-const int SensorFar = 14000;                    // Furthest distance we register on the PING sensor. (Soundwave travel time in milliseconds.)
-const int ReadingsPerSensor = 5;                // The number of historic readings to consider when determining position.
-const int TimePerDegree = 30;                    // ms per degree rotation on the servo to prevent servo motor electrical noise from interfering with the ultrasonic sensor readings
-const int MinimumTurnDistance = 3;              // Minimum number of degrees that the servo will turn. Keeps the servos from being too twitchy.
+const int SensorFar = 14000;                   // Furthest distance we register on the PING sensor. (Soundwave travel time in milliseconds.)
+const int ReadingsPerSensor = 3;               // The number of historic readings to consider when determining position.
+const int TimePerDegree = 30;                  // ms per degree rotation on the servo to prevent servo motor electrical noise from interfering with the ultrasonic sensor readings
+const int MinimumTurnDistance = 3;             // Minimum number of degrees that the servo will turn. Keeps the servos from being too twitchy.
 
 int sensorReadings[SENSOR_NUM][ReadingsPerSensor];   // Hold past readings for each sensor.
-int calculatedSenorReadings[SENSOR_NUM];             // The calculated distance for each sensor.
+int calculatedSensorReadings[SENSOR_NUM];             // The calculated distance for each sensor.
 int latestReading = 0;                               // Current position in the array for the most recent reading.
 int servoLocations[SENSOR_NUM];                      // The current position of each sensor.
 
 void setup() {
   Serial.begin(9600);
-  Serial.println("Tacit Glove Project");
+  Serial.println("Tacit Glove Project\r\nBOOT");
 
   pingTimer[0] = millis() + 75;           // First ping starts at 75ms, gives time for the Arduino to chill before starting.
   for (uint8_t i = 1; i < SENSOR_NUM; i++) {
@@ -47,30 +52,17 @@ void setup() {
   }
   for (uint8_t i = 0; i < SENSOR_NUM; i++) {  
     ServoList[i].attach(ServoPins[i]);  //Attach Servos
-    //do a full sweep
     delay(10);
+    //do a full sweep at boot
     ServoList[i].write(ServoMaxAngle[i]);
-    delay(200);
+    delay(500);
     ServoList[i].write(ServoMinAngle[i]);
-    delay(200);
+    delay(500);
     ServoList[i].write(90);
   }
-
 }
 
 void loop() {
-  /* for (uint8_t i = 0; i < SENSOR_NUM; i++) { // Loop through all the sensors.
-   if (millis() >= pingTimer[i]) {         // Is it this sensor's time to ping?
-   pingTimer[i] += PING_INTERVAL * SENSOR_NUM;  // Set next time this sensor will be pinged.
-   if (i == 0 && currentSensor == SENSOR_NUM - 1) oneSensorCycle(); // Sensor ping cycle complete, do something with the results.
-   sonar[currentSensor].timer_stop();          // Make sure previous timer is canceled before starting a new ping (insurance).
-   currentSensor = i;                          // Sensor being accessed.
-   cm[currentSensor] = 0;                      // Make distance zero in case there's no ping echo for this sensor.
-   sonar[currentSensor].ping_timer(echoCheck); // Do the ping (processing continues, interrupt will call echoCheck to look for echo).
-   }
-   }
-   */
-
   int i, j, oldLocation;
   unsigned long delayTime;
 
@@ -79,11 +71,11 @@ void loop() {
     // Get the current sensor's range.
     sensorReadings[i][latestReading] = getDistance(i);
     // Figure out an averaged/smoothed readings based on this and past data.
-    calculatedSenorReadings[i] = calculateNewDistace(i);
+    calculatedSensorReadings[i] = calculateNewDistace(i);
 
     // Set the servo to the correct angle.
     oldLocation = servoLocations[i];
-    servoLocations[i] = map(calculatedSenorReadings[i], 0, 100, ServoMinAngle[i], ServoMaxAngle[i]);
+    servoLocations[i] = map(calculatedSensorReadings[i], 0, 100, ServoMinAngle[i], ServoMaxAngle[i]);
 
     if (latestReading >= ReadingsPerSensor-1){                          // Don't do anything until we have enough data to trend.
       if (abs(servoLocations[i]-oldLocation) >= MinimumTurnDistance){   // Only try to turn it if we have somewhere to go.
@@ -127,20 +119,6 @@ void echoCheck() { // If ping received, set the sensor distance to array.
     cm[currentSensor] = sonar[currentSensor].ping_result / US_ROUNDTRIP_CM;
 }
 
-/*void oneSensorCycle() { // Sensor ping cycle complete, do something with the results.
- for (uint8_t i = 0; i < SENSOR_NUM; i++) {
- val = cm[i];
- val = map(val, 1, MAX_DISTANCE, ServoMinAngle[i], ServoMaxAngle[i]);
- ServoList[i].write(val);
- Serial.print(i);
- Serial.print("=");
- Serial.print(cm[i]);
- Serial.print("cm ");
- }
- Serial.println();
- }
- */
-
 int calculateNewDistace(int sensorNumber){
   int output = SensorFar;                      // Default value is the furthest distance.
 
@@ -152,7 +130,7 @@ int calculateNewDistace(int sensorNumber){
     float currentWeight = 1;                   // New readings count more than older readings.
     float percentagePossible = 0;
     boolean flickered = false;
-    for (int i=ReadingsPerSensor-1; i >=0 ;i--){   // Check for flicker (This reduces jitter with something right on the threshold.)
+    for (int i=ReadingsPerSensor-1; i >=0; i--){   // Check for flicker (This reduces jitter with something right on the threshold.)
       flickered = false;
       if (i==ReadingsPerSensor-1){
         if ((abs(sensorReadings[sensorNumber][i])-abs(sensorReadings[sensorNumber][i-1]) > flickerFactor) &&
@@ -180,12 +158,16 @@ int getDistance(int sensorNumber){
   // Trim the data into minimums and maximums and map it to the 0-100 output range.
   duration = constrain(duration, SensorClose, SensorFar);
   out = map(duration,  SensorClose, SensorFar, 0, 100);
-  if (sensorNumber == 1) {
+#if _DEBUG_MODE
+  if (sensorNumber == _DEBUG_SENSOR) {  //for debug reasons we track only one sensor on the debug terminal
+    Serial.print("Time required by pulse to come back: ");
     Serial.println(duration);
+    Serial.print("What will be send back: ");
     Serial.println(out);
   }
+#endif
   
-  //HC-SR04 Sensors return when they scan nothing. We fix this by code and return the longest possible distance
+  //HC-SR04 Sensors return 10 when they scan nothing. We fix this by code and return the longest possible distance
   if (duration != 10) {
     return out;
   } else {
