@@ -4,6 +4,7 @@
 // Tactile feedback for the blind
 // for HC-SR04 Ultrasonic Rangefinders
 // adapted to work with the NewPing library which allows very fast scanning
+// and use Vibration Motors for smaller and quiter footprint.
 // by Bill Seremetis (bill@seremetis.net)
 // 2012 November
 // BRANCH: Vibration Motor
