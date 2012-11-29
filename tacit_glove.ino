@@ -9,16 +9,15 @@
 // BRANCH: Vibration Motor
 //--------------------------------
 
-#define _DEBUG_MODE 1
-#define _DEBUG_SENSOR 1 //either 0 or 1
+#define _DEBUG_MODE 0
+#define _DEBUG_SENSOR 0 //either 0 or 1
 
-#define LEFT_SERVO_PIN 4
-#define RIGHT_SERVO_PIN 7
+#define VIBRATOR_MAX_PWM 195 //set PWM output to match max voltage of motor. 195 equals 3.8V. CAREFULL NOT TO BURN THINGS!!!
+#define VIBRATOR_MIN_PWM 0  //45 equals 0.8V
 
 #include <NewPing.h>
-#include <Servo.h>
 
-#define SENSOR_NUM     2 // Number or sensors.
+#define SENSOR_NUM     1 // Number or sensors.
 #define MAX_DISTANCE 350 // Maximum distance (in cm) to ping. Our sensors go to 400cm.
 #define PING_INTERVAL 50 // Milliseconds between sensor pings (29ms is about the min to avoid cross-sensor echo).
 
@@ -27,24 +26,18 @@ unsigned int cm[SENSOR_NUM];         // Where the ping distances are stored.
 byte currentSensor = 0;          // Keeps track of which sensor is active.
 
 NewPing sonar[SENSOR_NUM] = {     // Sensor object array.
-  NewPing(8, 9, MAX_DISTANCE), // Each sensor's trigger pin, echo pin, and max distance to ping.
-  NewPing(10, 11, MAX_DISTANCE)
+  NewPing(8, 7, MAX_DISTANCE), // Each sensor's trigger pin, echo pin, and max distance to ping.
 };
 
-Servo ServoList[SENSOR_NUM];
-const int ServoPins[SENSOR_NUM] = {LEFT_SERVO_PIN,RIGHT_SERVO_PIN};       //Servo motor pins on Arduino
-const int ServoMaxAngle[SENSOR_NUM] = {90,90}; //Where to turns the servos when something is close
-const int ServoMinAngle[SENSOR_NUM] = {0,180}; //Where to turns the servos when something is far
+const int vibrator = 9; //Vibrator PIN
+
 const int SensorClose = 10;                    // Closest value we detect with the PING sensor. (Soundwave travel time in milliseconds.)
 const int SensorFar = 14000;                   // Furthest distance we register on the PING sensor. (Soundwave travel time in milliseconds.)
 const int ReadingsPerSensor = 3;               // The number of historic readings to consider when determining position.
-const int TimePerDegree = 30;                  // ms per degree rotation on the servo to prevent servo motor electrical noise from interfering with the ultrasonic sensor readings
-const int MinimumTurnDistance = 3;             // Minimum number of degrees that the servo will turn. Keeps the servos from being too twitchy.
 
 int sensorReadings[SENSOR_NUM][ReadingsPerSensor];   // Hold past readings for each sensor.
 int calculatedSensorReadings[SENSOR_NUM];             // The calculated distance for each sensor.
 int latestReading = 0;                               // Current position in the array for the most recent reading.
-int servoLocations[SENSOR_NUM];                      // The current position of each sensor.
 
 void setup() {
   Serial.begin(9600);
@@ -53,16 +46,6 @@ void setup() {
   pingTimer[0] = millis() + 75;           // First ping starts at 75ms, gives time for the Arduino to chill before starting.
   for (uint8_t i = 1; i < SENSOR_NUM; i++) {
     pingTimer[i] = pingTimer[i - 1] + PING_INTERVAL;  // Set the starting time for each sensor.
-  }
-  for (uint8_t i = 0; i < SENSOR_NUM; i++) {  
-    ServoList[i].attach(ServoPins[i]);  //Attach Servos
-    delay(10);
-    //do a full sweep at boot
-    ServoList[i].write(ServoMaxAngle[i]);
-    delay(500);
-    ServoList[i].write(ServoMinAngle[i]);
-    delay(500);
-    ServoList[i].write(90);
   }
 }
 
@@ -77,31 +60,12 @@ void loop() {
     // Figure out an averaged/smoothed readings based on this and past data.
     calculatedSensorReadings[i] = calculateNewDistace(i);
 
-    // Set the servo to the correct angle.
-    oldLocation = servoLocations[i];
-    servoLocations[i] = map(calculatedSensorReadings[i], 0, 100, ServoMinAngle[i], ServoMaxAngle[i]);
 
-    if (latestReading >= ReadingsPerSensor-1){                          // Don't do anything until we have enough data to trend.
-      if (abs(servoLocations[i]-oldLocation) >= MinimumTurnDistance){   // Only try to turn it if we have somewhere to go.
-        ServoList[i].attach(ServoPins[i]);
-        delay(10);
-        ServoList[i].write(servoLocations[i]);
-        delayTime = (TimePerDegree * (abs(servoLocations[i]-oldLocation))+20);      // Set a delay for the next reading so motor noise doesn't interfere with senor readings.
-        if (abs(delayTime)>500){ // If it can't do it in this amount of time       // It's based on how far it has to turn to keep the delay to a minimum, response  me at a maximum.
-            delayTime=500;         // we'll get it next time. Keep it responsive.
-        }
-        delay(delayTime);
-        ServoList[i].detach();
-      } 
-      else {                                          // Otherwise if the reading hasn't changed enough write the old value to
-        ServoList[i].attach(ServoPins[i]);            // the servo so that it will hold in place if it's applying pressure.
-        delay(10);
-        ServoList[i].write(oldLocation);
-        delay(50);         
-        ServoList[i].detach();   
-        servoLocations[i]=oldLocation;
-      }
+    Serial.println(calculatedSensorReadings[i]);
+    if (calculatedSensorReadings[i] <= VIBRATOR_MAX_PWM) {
+      analogWrite(vibrator, calculatedSensorReadings[i]);
     }
+
     delay(20); // Added to fix left sensor misbehavior reported by Rob.
   }
 
@@ -161,7 +125,7 @@ int getDistance(int sensorNumber){
 
   // Trim the data into minimums and maximums and map it to the 0-100 output range.
   duration = constrain(duration, SensorClose, SensorFar);
-  out = map(duration,  SensorClose, SensorFar, 0, 100);
+  out = map(duration,  SensorClose, SensorFar, 195, 45);
 #if _DEBUG_MODE
   if (sensorNumber == _DEBUG_SENSOR) {  //for debug reasons we track only one sensor on the debug terminal
     Serial.print("Time required by pulse to come back: ");
@@ -175,7 +139,7 @@ int getDistance(int sensorNumber){
   if (duration != 10) {
     return out;
   } else {
-    return map(SensorFar, SensorClose, SensorFar, 0, 100);
+    return map(SensorFar, SensorClose, SensorFar, 195, 45);
   }
 }
 
