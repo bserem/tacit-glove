@@ -6,6 +6,7 @@
 // adapted to work with the NewPing library which allows very fast scanning
 // by Bill Seremetis (bill@seremetis.net)
 // 2012 November
+// BRANCH: Vibration Motor
 //--------------------------------
 
 #define _DEBUG_MODE 1
