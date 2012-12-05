@@ -10,7 +10,7 @@
 // BRANCH: Vibration Motor
 //--------------------------------
 
-#define _DEBUG_MODE 0
+#define _DEBUG_MODE 1
 #define _DEBUG_SENSOR 0 //either 0 or 1
 
 #define VIBRATOR_MAX_PWM 195 //set PWM output to match max voltage of motor. 195 equals 3.8V. CAREFULL NOT TO BURN THINGS!!!
@@ -19,8 +19,8 @@
 #include <NewPing.h>
 
 #define SENSOR_NUM     1 // Number or sensors.
-#define MAX_DISTANCE 350 // Maximum distance (in cm) to ping. Our sensors go to 400cm.
-#define PING_INTERVAL 50 // Milliseconds between sensor pings (29ms is about the min to avoid cross-sensor echo).
+#define MAX_DISTANCE 150 // Maximum distance (in cm) to ping. Our sensors go to 400cm.
+#define PING_INTERVAL 33 // Milliseconds between sensor pings (29ms is about the min to avoid cross-sensor echo).
 
 unsigned long pingTimer[SENSOR_NUM]; // Holds the times when the next ping should happen for each sensor.
 unsigned int cm[SENSOR_NUM];         // Where the ping distances are stored.
@@ -43,6 +43,8 @@ int latestReading = 0;                               // Current position in the 
 void setup() {
   Serial.begin(9600);
   Serial.println("Tacit Glove Project\r\nBOOT");
+  
+  pinMode(vibrator,OUTPUT);
 
   pingTimer[0] = millis() + 75;           // First ping starts at 75ms, gives time for the Arduino to chill before starting.
   for (uint8_t i = 1; i < SENSOR_NUM; i++) {
@@ -126,7 +128,14 @@ int getDistance(int sensorNumber){
 
   // Trim the data into minimums and maximums and map it to the 0-100 output range.
   duration = constrain(duration, SensorClose, SensorFar);
-  out = map(duration,  SensorClose, SensorFar, 195, 45);
+  
+  //HC-SR04 Sensors return 10 when they scan nothing. We fix this by code and return the longest possible distance
+  if (duration != 10) {
+    out = map(duration,  SensorClose, SensorFar, VIBRATOR_MAX_PWM, VIBRATOR_MIN_PWM);
+  } else {
+    out = map(SensorFar, SensorClose, SensorFar, VIBRATOR_MAX_PWM, VIBRATOR_MIN_PWM);
+  }
+  
 #if _DEBUG_MODE
   if (sensorNumber == _DEBUG_SENSOR) {  //for debug reasons we track only one sensor on the debug terminal
     Serial.print("Time required by pulse to come back: ");
@@ -136,11 +145,6 @@ int getDistance(int sensorNumber){
   }
 #endif
   
-  //HC-SR04 Sensors return 10 when they scan nothing. We fix this by code and return the longest possible distance
-  if (duration != 10) {
-    return out;
-  } else {
-    return map(SensorFar, SensorClose, SensorFar, 195, 45);
-  }
+  return out;
 }
 
