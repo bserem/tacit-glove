@@ -22,6 +22,15 @@
 #define MAX_DISTANCE 150 // Maximum distance (in cm) to ping. Our sensors go to 400cm.
 #define PING_INTERVAL 33 // Milliseconds between sensor pings (29ms is about the min to avoid cross-sensor echo).
 
+float nodepoints[6][2]= {
+  { 11,VIBRATOR_MAX_PWM  }
+  , { 1000,VIBRATOR_MAX_PWM  }
+  , { 2000,140}
+  , { 5000,100  }
+  , { 6000,50 }
+  , { 10000,0 }
+};
+
 unsigned long pingTimer[SENSOR_NUM]; // Holds the times when the next ping should happen for each sensor.
 unsigned int cm[SENSOR_NUM];         // Where the ping distances are stored.
 byte currentSensor = 0;          // Keeps track of which sensor is active.
@@ -131,9 +140,11 @@ int getDistance(int sensorNumber){
   
   //HC-SR04 Sensors return 10 when they scan nothing. We fix this by code and return the longest possible distance
   if (duration != 10) {
-    out = map(duration,  SensorClose, SensorFar, VIBRATOR_MAX_PWM, VIBRATOR_MIN_PWM);
+    //out = map(duration,  SensorClose, SensorFar, VIBRATOR_MAX_PWM, VIBRATOR_MIN_PWM);
+    out = reMap(nodepoints, duration);
   } else {
     out = map(SensorFar, SensorClose, SensorFar, VIBRATOR_MAX_PWM, VIBRATOR_MIN_PWM);
+    //out = reMap(nodepoints, VIBRATOR_MIN_PWM);
   }
   
 #if _DEBUG_MODE
@@ -148,3 +159,18 @@ int getDistance(int sensorNumber){
   return out;
 }
 
+int reMap(float pts[10][2], int input) {
+  int rr;
+  float bb,mm;
+
+  for (int nn=0; nn < 5; nn++) {
+
+    if (input >= pts[nn][0] && input <= pts[nn+1][0]) {
+      mm= ( pts[nn][1] - pts[nn+1][1] ) / ( pts[nn][0] - pts[nn+1][0] );
+      mm= mm * (input-pts[nn][0]);
+      mm = mm +  pts[nn][1];
+      rr = mm;
+    }
+  }
+  return(rr);
+}
