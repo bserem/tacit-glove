@@ -7,7 +7,7 @@
 // and use Vibration Motors for smaller and quiter footprint.
 // by Bill Seremetis (bill@seremetis.net)
 // 2012 November
-// BRANCH: Vibration Motor
+// BRANCH: Two Vibration Motors (two-vibras)
 //--------------------------------
 
 #define _DEBUG_MODE 0
@@ -18,19 +18,20 @@
 
 #include <NewPing.h>
 
-#define SENSOR_NUM     1 // Number or sensors.
-#define MAX_DISTANCE 350 // Maximum distance (in cm) to ping. Our sensors go to 400cm.
-#define PING_INTERVAL 50 // Milliseconds between sensor pings (29ms is about the min to avoid cross-sensor echo).
+#define SENSOR_NUM     2 // Number or sensors.
+#define MAX_DISTANCE 150 // Maximum distance (in cm) to ping. Our sensors go to 400cm, but without much accuracy.
+#define PING_INTERVAL 33 // Milliseconds between sensor pings (29ms is about the min to avoid cross-sensor echo).
 
 unsigned long pingTimer[SENSOR_NUM]; // Holds the times when the next ping should happen for each sensor.
 unsigned int cm[SENSOR_NUM];         // Where the ping distances are stored.
 byte currentSensor = 0;          // Keeps track of which sensor is active.
 
 NewPing sonar[SENSOR_NUM] = {     // Sensor object array.
-  NewPing(8, 7, MAX_DISTANCE), // Each sensor's trigger pin, echo pin, and max distance to ping.
+  NewPing(8, 9, MAX_DISTANCE), // Each sensor's trigger pin, echo pin, and max distance to ping.
+  NewPing(10, 11, MAX_DISTANCE)
 };
 
-const int vibrator = 9; //Vibrator PIN
+const int vibrators[2] = { 6, 5 }; //Vibrator PIN, must be a PWM pin.
 
 const int SensorClose = 10;                    // Closest value we detect with the PING sensor. (Soundwave travel time in milliseconds.)
 const int SensorFar = 14000;                   // Furthest distance we register on the PING sensor. (Soundwave travel time in milliseconds.)
@@ -43,6 +44,10 @@ int latestReading = 0;                               // Current position in the 
 void setup() {
   Serial.begin(9600);
   Serial.println("Tacit Glove Project\r\nBOOT");
+  
+  for (int i = 0; i < SENSOR_NUM; i++) {
+    pinMode(vibrators[i], OUTPUT);
+  }
 
   pingTimer[0] = millis() + 75;           // First ping starts at 75ms, gives time for the Arduino to chill before starting.
   for (uint8_t i = 1; i < SENSOR_NUM; i++) {
@@ -64,10 +69,10 @@ void loop() {
 
     Serial.println(calculatedSensorReadings[i]);
     if (calculatedSensorReadings[i] <= VIBRATOR_MAX_PWM) {
-      analogWrite(vibrator, calculatedSensorReadings[i]);
+      analogWrite(vibrators[i], calculatedSensorReadings[i]);
     }
 
-    delay(20); // Added to fix left sensor misbehavior reported by Rob.
+    //delay(20); // Added to fix left sensor misbehavior
   }
 
   latestReading++; // Increment the reading counter so we know where we're at.
@@ -124,9 +129,9 @@ int getDistance(int sensorNumber){
 
   duration = sonar[sensorNumber].ping();
 
-  // Trim the data into minimums and maximums and map it to the 0-100 output range.
+  // Trim the data into minimums and maximums and map it to the output range of our vibrator voltage (PWM).
   duration = constrain(duration, SensorClose, SensorFar);
-  out = map(duration,  SensorClose, SensorFar, 195, 45);
+  out = map(duration,  SensorClose, SensorFar, VIBRATOR_MAX_PWM, VIBRATOR_MIN_PWM);
 #if _DEBUG_MODE
   if (sensorNumber == _DEBUG_SENSOR) {  //for debug reasons we track only one sensor on the debug terminal
     Serial.print("Time required by pulse to come back: ");
@@ -140,7 +145,7 @@ int getDistance(int sensorNumber){
   if (duration != 10) {
     return out;
   } else {
-    return map(SensorFar, SensorClose, SensorFar, 195, 45);
+    return map(SensorFar, SensorClose, SensorFar, VIBRATOR_MAX_PWM, VIBRATOR_MIN_PWM);
   }
 }
 
