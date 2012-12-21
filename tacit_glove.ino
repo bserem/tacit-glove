@@ -10,8 +10,8 @@
 // BRANCH: Two Vibration Motors (two-vibras)
 //--------------------------------
 
-#define _DEBUG_MODE 0
-#define _DEBUG_SENSOR 0 //either 0 or 1
+#define _DEBUG_MODE 1
+#define _DEBUG_SENSOR 1 //either 0 or 1
 
 #define VIBRATOR_MAX_PWM 195 //set PWM output to match max voltage of motor. 195 equals 3.8V. CAREFULL NOT TO BURN THINGS!!!
 #define VIBRATOR_MIN_PWM 0  //45 equals 0.8V
@@ -27,11 +27,11 @@ unsigned int cm[SENSOR_NUM];         // Where the ping distances are stored.
 byte currentSensor = 0;          // Keeps track of which sensor is active.
 
 NewPing sonar[SENSOR_NUM] = {     // Sensor object array.
-  NewPing(8, 9, MAX_DISTANCE), // Each sensor's trigger pin, echo pin, and max distance to ping.
-  NewPing(10, 11, MAX_DISTANCE)
+  NewPing(6, 7, MAX_DISTANCE), // Each sensor's trigger pin, echo pin, and max distance to ping.
+  NewPing(8, 9, MAX_DISTANCE)
 };
 
-const int vibrators[2] = { 6, 5 }; //Vibrator PIN, must be a PWM pin.
+const int vibrators[2] = { 11, 5 }; //Vibrator PIN, must be a PWM pin.
 
 const int SensorClose = 10;                    // Closest value we detect with the PING sensor. (Soundwave travel time in milliseconds.)
 const int SensorFar = 14000;                   // Furthest distance we register on the PING sensor. (Soundwave travel time in milliseconds.)
