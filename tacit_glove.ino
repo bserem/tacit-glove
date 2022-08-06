@@ -4,7 +4,7 @@
 // Tactile feedback for the blind
 // for HC-SR04 Ultrasonic Rangefinders
 // adapted to work with the NewPing library which allows very fast scanning
-// by Bill Seremetis (bill@seremetis.net)
+// by Bill Seremetis
 // 2012 November
 //--------------------------------
 
